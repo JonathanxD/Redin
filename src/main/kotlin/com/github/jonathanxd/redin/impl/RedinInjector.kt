@@ -46,6 +46,12 @@ class RedinInjector(private val binds: MutableList<Bind<*>>) : Injector {
     private val lateTargets = mutableSetOf<InjectionTarget>()
     private val hotSwappableTargets = mutableSetOf<HotSwappable>()
 
+    init {
+        bind {
+            bind<Injector>() toValue this@RedinInjector
+        }
+    }
+
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any> get(klass: Class<T>, scope: BindScope): T {
         return createBinding(klass, scope).provide(InjectionTargetType(klass)) as T
