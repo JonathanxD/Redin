@@ -269,8 +269,7 @@ class RedinInjector(private val binds: MutableList<Bind<*>>) : Injector {
                         val args = arrayOfNulls<Any>(constructor.parameterCount)
 
                         constructor.parameters.forEachIndexed { index, parameter ->
-                            val ctr = if (index == args.size - 1) constructor else null
-                            targets += ParameterInjectionTarget(args, index, parameter, ctr, ctx)
+                            targets += ParameterInjectionTarget(args, index, parameter, constructor, index == args.size - 1, ctx)
                         }
                     }
                 }
@@ -293,7 +292,8 @@ class RedinInjector(private val binds: MutableList<Bind<*>>) : Injector {
         val args: Array<Any?>,
         val count: Int,
         val parameter: Parameter,
-        val constructor: Constructor<*>?,
+        val constructor: Constructor<*>,
+        val isLast: Boolean,
         val context: InjectionContext
     ) :
         InjectionTargetAnnotated(parameter) {
@@ -306,7 +306,9 @@ class RedinInjector(private val binds: MutableList<Bind<*>>) : Injector {
         override fun injectValue(value: Any) {
             this.args[count] = value
 
-            this.context.instance = constructor?.newInstance(*this.args)
+            if (isLast) {
+                this.context.instance = constructor.newInstance(*this.args)
+            }
         }
 
         override fun equals(other: Any?): Boolean =
