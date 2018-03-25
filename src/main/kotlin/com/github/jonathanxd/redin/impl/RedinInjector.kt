@@ -320,6 +320,7 @@ class RedinInjector(private val binds: MutableList<Bind<*>>) : Injector {
                 .add("ctx", this.context)
                 .add("parameter", this.parameter)
                 .add("pos", this.count)
+                .add("constructor", this.constructor)
 
         override fun toString(): String = this.stringHelper().toString()
 
