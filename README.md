@@ -1,8 +1,10 @@
 # Redin
 
+**Injection made easy.**
+
 Simple dependency injection framework. Redin was written on top of `KoresProxy` with some features like `Lazy` dependencies and `HotSwappable` implemented through the fast proxies of `KoresProxy`.
 
-Redin is tiny and is not designed to inject complex dependencies.
+Redin is tiny, simple, and is not designed to inject complex dependencies.
 
 ## Examples
 
@@ -140,6 +142,53 @@ Note: If a dependency is available for a `@Late` at injection-time, this depende
 ## Additional notes
 
 `@HotSwappable` could be used with either `@Late` or `@Lazy`, and vice-versa (this does not applies if you are using `Hot`, `LateInit` or `Lazy` type). But you can't use `@Late` with `@Lazy` because `@Lazy` already implies late initialization.
+
+## Child injectors
+
+Child injectors are those that inherits bindings from a parent injector. In Redin, you could simply create a child injector by calling `child` function on an injector, for example:
+
+```kotlin
+fun example() {
+    val injector = Redin {}
+    val childInjector = injector.child {}
+}
+```
+
+All expressions are the same as *Redin DSL*.
+
+### Override bindings
+
+In Redin, parent bindings could be overridden, just type the binding and you made it, example:
+
+```kotlin
+interface Logger {
+    //...
+}
+
+class SysoutLogger : Logger
+class FileLogger : Logger
+
+@RedinInject
+class MyService(val logger: Logger)
+
+fun example() {
+    val injector = Redin {
+        bind<Logger>() toValue SysoutLogger()
+    }
+
+    val serviceLoggingToSysout = injector[MyService]
+
+    val childInjector = injector.child {
+        bind<Logger>() toValue FileLogger()
+    }
+
+    val serviceLoggingToFile = childInjector[MyService]
+}
+```
+
+### Child injector and scopes
+
+In Redin, child injectors does not automatically inherit scope injected instances, instead, new ones will be created when supplied, to change this behavior, you should call `Injector.inheritParentScopedBindingsCache()`, this will make all parent cached scoped bindings instance to be inherited and instances will be reused, if this is the desired behavior.
 
 ## JSR-330
 

@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2018 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -58,10 +58,10 @@ class ContextProviderTest {
 
         val my = injector.get<My>()
 
-        val tryModify = Try { (my.accessed as MutableMap<String, String>)["A"] = "B" }
+        val tryModify = Try<Unit, java.lang.UnsupportedOperationException> { (my.accessed as MutableMap<String, String>)["A"] = "B" }
 
-        Assert.assertTrue(tryModify.isLeft)
-        Assert.assertTrue(tryModify.left is UnsupportedOperationException)
+        Assert.assertTrue(tryModify.isError)
+        Assert.assertTrue(tryModify.errorOrNull() is UnsupportedOperationException)
         Assert.assertEquals(mapOf("example" to "@89513"), my.accessed)
 
     }

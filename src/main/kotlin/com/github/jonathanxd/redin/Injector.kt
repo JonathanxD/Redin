@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2018 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -27,15 +27,32 @@
  */
 package com.github.jonathanxd.redin
 
+import com.github.jonathanxd.iutils.box.MutableBox
 import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.jonathanxd.redin.impl.AbstractRedinInjector
 import java.lang.reflect.Type
 
 /**
  * Injector of dependencies. To construct an injector uses [Redin].
  */
 interface Injector {
+
+    /**
+     * Map of bindings to injected instance. This map may be populated lazily.
+     */
+    val scopedBindings: Map<Bind<*>, Any>
+
+    /**
+     * Gets a set of late injection targets.
+     */
+    val lateTargets: Set<InjectionTarget>
+
+    /**
+     * Gets a set of hot swappable targets.
+     */
+    val hotSwappableTargets: Set<HotSwappable>
 
     /**
      * Injects dependencies in [klass] (in specified [scope]) and returns the [instance][T].
@@ -68,12 +85,27 @@ interface Injector {
     /**
      * Inject dependency in members of existing instance.
      */
-    fun <T : Any> injectMembers(instance: T): T = this.injectMembers(instance, com.github.jonathanxd.redin.BindScope.NO_SCOPE)
+    fun <T : Any> injectMembers(instance: T): T = this.injectMembers(instance, BindScope.NO_SCOPE)
 
     /**
      * Add more bindings to this injector.
      */
     fun bind(ctx: BindContext.() -> Unit)
+
+    /**
+     * Make this injector to inherit *scoped bindings instance cache* of parent one.
+     *
+     * Not calling this method will cause new instances to be created for *scoped bindings*
+     * instead of reusing already created ones, which is the default behavior of child injectors.
+     *
+     * *Does not have any effect if there is no parent injector.*
+     */
+    fun inheritParentScopedBindingsCache(): Injector = this
+
+    /**
+     * Gets all [binds][bind].
+     */
+    fun getAllBinds(): List<Bind<*>>
 
     /**
      * Gets all [binds][bind] that matches [matcher].
@@ -120,6 +152,30 @@ interface Injector {
      * @param keepScoped Whether to keep cached scoped dependencies or not.
      */
     fun newInjector(keepScoped: Boolean = true): Injector
+
+    /**
+     * Creates a child injector.
+     */
+    fun createChild(binds: MutableList<Bind<*>> = mutableListOf()): Injector
+
+    data class HotSwappable(val target: InjectionTarget, internal val setter: (a: Any?) -> Unit) {
+        constructor(target: InjectionTarget, box: MutableBox<Any?>) : this(target, box::set)
+        constructor(target: InjectionTarget, hot: HotSwappableData) : this(target, {
+            @Suppress("UNCHECKED_CAST")
+            when (hot) {
+                is Hot<*> -> (hot as Hot<Any?>).value = it
+                is HotLazy<*> -> (hot as HotLazy<Any?>).value = it as Lazy<Any?>
+                is HotBoolean -> hot.value = it as Boolean
+                is HotChar -> hot.value = it as Char
+                is HotByte -> hot.value = it as Byte
+                is HotShort -> hot.value = it as Short
+                is HotInt -> hot.value = it as Int
+                is HotLong -> hot.value = it as Long
+                is HotFloat -> hot.value = it as Float
+                is HotDouble -> hot.value = it as Double
+            }
+        })
+    }
 }
 
 fun Injector.getRequiredBind(matcher: BindMatcher): Bind<*> =

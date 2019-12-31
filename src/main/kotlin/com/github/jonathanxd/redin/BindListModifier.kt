@@ -25,49 +25,15 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.redin.test
+package com.github.jonathanxd.redin
 
-import com.github.jonathanxd.redin.*
-import org.junit.Assert
-import org.junit.Test
-import javax.inject.Inject
-import javax.inject.Named
-import javax.inject.Provider
+import java.util.function.Predicate
 
-class DirectTest {
+interface BindListModifier {
+    fun addBind(bind: Bind<*>)
+    fun removeBind(bind: Bind<*>)
+    fun removeBindIf(predicate: (Bind<*>) -> Boolean)
 
-    @Test
-    fun test() {
-        var x = 0
-        val injector = Redin {
-            bind<Int>() toProvider { x++ }
-        }
-
-        val number = injector.provide<Int>()
-        Assert.assertEquals(0, number.invoke())
-        Assert.assertEquals(1, number.invoke())
-
-        injector.bind {
-            bind<Int>() qualifiedWith Name("y") toValue 0
-        }
-
-        Assert.assertEquals(2, number.invoke())
-
-        val y = injector.provide<Int>(listOf(AnnotationContainer<Named>(mapOf("value" to "y"))))
-
-        Assert.assertEquals(0, y.invoke())
-
-        var x2 = 0
-
-        injector.bind {
-            bind<Int>() inScope SINGLETON qualifiedWith Name("h") toProvider { x2++ }
-        }
-
-        val b = provide<Int>(injector) {
-            this qualifiedWith nameContainer("h") inScope SINGLETON
-        }
-
-        Assert.assertEquals(0, b.invoke())
-        Assert.assertEquals(0, b.invoke())
-    }
+    fun removeBindIf(predicate: Predicate<in Bind<*>>) =
+            this.removeBindIf { predicate.test(it) }
 }

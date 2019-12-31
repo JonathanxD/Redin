@@ -27,38 +27,33 @@
  */
 package com.github.jonathanxd.redin.impl
 
-import com.github.jonathanxd.redin.Bind
-import com.github.jonathanxd.redin.BindListModifier
-import com.github.jonathanxd.redin.InjectionTarget
-import com.github.jonathanxd.redin.Injector
-import java.util.*
-import kotlin.collections.List
-import kotlin.collections.MutableList
-import kotlin.collections.MutableMap
-import kotlin.collections.MutableSet
-import kotlin.collections.mutableMapOf
-import kotlin.collections.mutableSetOf
-import kotlin.collections.set
-import kotlin.collections.toMutableList
+import com.github.jonathanxd.redin.*
 
-typealias JwLazy<T> = com.github.jonathanxd.iutils.`object`.Lazy<T>
+class ChildRedinInjector(private val parent: Injector,
+                         override val mutableBinds: MutableList<Bind<*>>) : AbstractRedinInjector(), BindListModifier {
 
-class RedinInjector(override val mutableBinds: MutableList<Bind<*>>) : AbstractRedinInjector(), BindListModifier {
+    private var inheritedScopedBindings: Map<Bind<*>, Any> = emptyMap()
+
     override val binds: List<Bind<*>>
-        get() = this.mutableBinds
+        get() = this.parent.getAllBinds() + this.mutableBinds
 
-    private val _scopedBindings: MutableMap<Bind<*>, Any> = mutableMapOf()
-    override val scopedBindings: Map<Bind<*>, Any> = Collections.unmodifiableMap(this._scopedBindings)
+    override val scopedBindings: Map<Bind<*>, Any>
+        get() = this.inheritedScopedBindings
+                .filterKeys { !this.mutableBinds.contains(it) } + this.mutableScopedBindings
 
-    private val _lateTargets: MutableSet<InjectionTarget> = mutableSetOf()
-    override val lateTargets: Set<InjectionTarget> = Collections.unmodifiableSet(this._lateTargets)
+    override val lateTargets: Set<InjectionTarget>
+        get() = this.parent.lateTargets + this.mutableLateTargets
 
-    private val _hotSwappableTargets: MutableSet<Injector.HotSwappable> = mutableSetOf()
-    override val hotSwappableTargets: Set<Injector.HotSwappable> = Collections.unmodifiableSet(this._hotSwappableTargets)
+    override val hotSwappableTargets: Set<Injector.HotSwappable>
+        get() = this.parent.hotSwappableTargets + this.mutableHotSwappableTargets
+
+    private val mutableScopedBindings = mutableMapOf<Bind<*>, Any>()
+    private val mutableLateTargets = mutableSetOf<InjectionTarget>()
+    private val mutableHotSwappableTargets = mutableSetOf<Injector.HotSwappable>()
 
     init {
         bind {
-            bind<Injector>() toValue this@RedinInjector
+            bind<Injector>() toValue this@ChildRedinInjector
         }
     }
 
@@ -74,27 +69,32 @@ class RedinInjector(override val mutableBinds: MutableList<Bind<*>>) : AbstractR
         this.mutableBinds.removeIf(predicate)
     }
 
+    override fun inheritParentScopedBindingsCache(): ChildRedinInjector {
+        this.inheritedScopedBindings = this.parent.scopedBindings
+        return this
+    }
+
     override fun addScopedBinding(bind: Bind<*>, instance: Any) {
-        this._scopedBindings[bind] = instance
+        this.mutableScopedBindings[bind] = instance
     }
 
     override fun addLateTarget(target: InjectionTarget) {
-        this._lateTargets.add(target)
+        this.mutableLateTargets.add(target)
     }
 
     override fun addHotSwappableTarget(target: Injector.HotSwappable) {
-        this._hotSwappableTargets.add(target)
+        this.mutableHotSwappableTargets.add(target)
     }
 
     override fun removeLateTarget(predicate: (InjectionTarget) -> Boolean) {
-        this._lateTargets.removeIf(predicate)
+        this.mutableLateTargets.removeIf(predicate)
     }
 
-    override fun newInjector(keepScoped: Boolean): RedinInjector {
-        val newInjector = RedinInjector(this.binds.toMutableList())
-        if (keepScoped) newInjector._scopedBindings += this.scopedBindings
+    override fun newInjector(keepScoped: Boolean): ChildRedinInjector {
+        val newInjector = ChildRedinInjector(this.parent.newInjector(keepScoped), this.binds.toMutableList())
+        if (keepScoped) newInjector.mutableScopedBindings += this.scopedBindings
         return newInjector
     }
 
-}
 
+}

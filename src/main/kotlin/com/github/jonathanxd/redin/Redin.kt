@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2018 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -33,6 +33,7 @@ import com.github.jonathanxd.iutils.reflection.Reflection
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeParameterProvider
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.jonathanxd.redin.impl.ChildRedinInjector
 import com.github.jonathanxd.redin.impl.RedinInjector
 import java.util.function.Predicate
 
@@ -46,12 +47,33 @@ annotation class RedinDsl
 inline fun Redin(ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
     val redin = RedinInjector(bindings)
-    ctx(BindContext(bindings, redin))
+    ctx(BindContext(redin, redin))
     return redin
 }
 
+/**
+ * Creates injector.
+ */
+inline fun ChildRedin(parent: Injector, ctx: BindContext.() -> Unit): Injector {
+    val bindings = mutableListOf<Bind<*>>()
+    val redin = ChildRedinInjector(parent, bindings)
+    ctx(BindContext(redin, redin))
+    return redin
+}
+
+/**
+ * Creates injector.
+ */
+inline fun Injector.child(ctx: BindContext.() -> Unit): Injector {
+    val bindings = mutableListOf<Bind<*>>()
+    val redin = ChildRedinInjector(this, bindings)
+    ctx(BindContext(redin, redin))
+    return redin
+}
+
+
 @RedinDsl
-class BindContext(private val bindList: MutableList<Bind<*>>, val injector: Injector) {
+class BindContext(private val bindListModifier: BindListModifier, val injector: Injector) {
 
     /**
      * Adds all binds of [module].
@@ -112,7 +134,7 @@ class BindContext(private val bindList: MutableList<Bind<*>>, val injector: Inje
      * Adds [bind] to this bind list.
      */
     fun addBind(bind: Bind<*>): BindContext {
-        this.bindList += bind
+        this.bindListModifier.addBind(bind)
         return this
     }
 
@@ -120,7 +142,7 @@ class BindContext(private val bindList: MutableList<Bind<*>>, val injector: Inje
      * Removes [bind] from this bind list.
      */
     fun removeBind(bind: Bind<*>): BindContext {
-        this.bindList -= bind
+        this.bindListModifier.removeBind(bind)
         return this
     }
 
@@ -128,7 +150,7 @@ class BindContext(private val bindList: MutableList<Bind<*>>, val injector: Inje
      * Removes [bind] from this bind list.
      */
     fun removeBindIf(predicate: Predicate<in Bind<*>>): BindContext {
-        this.bindList.removeIf(predicate)
+        this.bindListModifier.removeBindIf(predicate)
         return this
     }
 }
@@ -222,6 +244,24 @@ class ProgressBinding<T : Any>(
      */
     infix fun toLazy(lazy: NonNullLazy<T>): BindContext {
         return this toProvider { lazy.get() }
+    }
+
+    /**
+     * Defines an implementation for dependency and finalizes the bind construction.
+     *
+     * Dependencies are injected in [V].
+     */
+    inline fun <reified V: T> toImplementation(): BindContext {
+        return this toImplementation V::class.java
+    }
+
+    /**
+     * Defines an implementation for dependency and finalizes the bind construction.
+     *
+     * Dependencies are injected in [V].
+     */
+    inline fun <reified V: T> toImplementationReified(): BindContext {
+        return this toImplementation object : TypeParameterProvider<T>() {}.createTypeInfo()
     }
 
     /**
