@@ -25,22 +25,49 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.redin
+package com.github.jonathanxd.redin.test
 
-import com.github.jonathanxd.iutils.type.TypeUtil
-import java.lang.reflect.Type
+import com.github.jonathanxd.redin.*
+import org.junit.Assert
+import org.junit.Test
 
-open class InjectionException : RuntimeException {
-    constructor() : super()
-    constructor(message: String) : super(message)
-    constructor(cause: Throwable) : super(cause)
-    constructor(message: String, cause: Throwable) : super(message, cause)
-}
+class LateInjectionOnConstructor {
 
-open class BindingMissingException(target: InjectionTarget) :
-        InjectionException("Missing binding for ${target.toReadableExtended()}")
+    @RedinInject
+    class Node(val value: Any,
+               @Late val parent: Node?)
 
-open class InvalidInjectionTargetException : InjectionException {
-    constructor(message: String, target: InjectionTarget) : super("$message. Injection Target: ${target.toReadableExtended()}")
-    constructor(message: String, target: InjectionTarget, cause: Throwable) : super("$message. Injection Target: ${target.toReadableExtended()}", cause)
+    @Test(expected = InvalidInjectionTargetException::class)
+    fun selfInjectionTestFail() {
+        val injector = Redin {
+            bind<Any>() toValue "Hello"
+        }
+
+        val node: Node = injector.get()
+        injector.bind {
+            bind<Node>() toValue node
+        }
+
+        Assert.assertTrue(node == node.parent)
+    }
+
+    @RedinInject
+    class Node2(val value: Any) {
+        @Late
+        lateinit var parent: Node2
+    }
+
+    fun selfInjectionTestRight() {
+        val injector = Redin {
+            bind<Any>() toValue "Hello"
+        }
+
+        val node: Node2 = injector.get()
+        injector.bind {
+            bind<Node2>() toValue node
+        }
+
+        Assert.assertTrue(node == node.parent)
+    }
+
 }

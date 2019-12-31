@@ -33,6 +33,7 @@ import com.github.jonathanxd.iutils.string.ToStringHelper
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.jonathanxd.redin.*
+import java.lang.StringBuilder
 import java.lang.reflect.*
 import java.util.*
 import javax.inject.Inject
@@ -158,6 +159,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                         this.inject(late)
                         InjectionTargetLate(this, late)
                     } else {
+                        this.inject(null)
                         this
                     })
                     return false
@@ -232,6 +234,12 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             createLazy(this.type.toClass(), lz)
     }
 
+    private fun List<InjectionTarget>.validateInjectionTargets() {
+        this.forEach { target ->
+            target.validateInjectionTarget()
+        }
+    }
+
     private fun List<InjectionTarget>.doInjection(bindings: List<Bind<*>>) {
         this.forEach { target ->
             target.doInjection(bindings)
@@ -304,12 +312,17 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         override val name: String
             get() = parameter.name
 
-        override fun injectValue(value: Any) {
+        override fun injectValue(value: Any?) {
             this.args[count] = value
 
             if (isLast) {
                 this.context.instance = constructor.newInstance(*this.args)
             }
+        }
+
+        override fun validateInjectionTarget() {
+            if (this.late && !this.parameter.type.isLate())
+                throw InvalidInjectionTargetException("Late Injection parameter must be of LateInit type", this)
         }
 
         override fun equals(other: Any?): Boolean =
@@ -327,6 +340,30 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
 
         override fun toString(): String = this.stringHelper().toString()
 
+        override fun formatToReadable(): String {
+            val formattedArgs = createFormattedConstructorArgs(
+                    this.count + 1,
+                    this.args.size,
+                    "${this.type.toReadable()} ${this.resolveNameOrOriginal()}"
+            )
+            return "${this.qualifiersToReadableSpaced()}$formattedArgs (Argument pos: ${count + 1})"
+        }
+
+        private fun createFormattedConstructorArgs(count: Int, max: Int, value: String) =
+                this.constructor.declaringClass.simpleName +
+                StringJoiner(", ", "(", ")").also { sb ->
+                    repeat(count - 1) {
+                        sb.add("?")
+                    }
+
+                    sb.add(value)
+
+                    repeat(max - count) {
+                        sb.add("?")
+                    }
+                }
+
+
     }
 
     private fun AnnotatedElement.isInjectAnnotationPresent() =
@@ -342,7 +379,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         override val name: String = this.target.name
         override val qualifiers: List<AnnotationContainer> = this.target.qualifiers
 
-        override fun inject(value: Any) {
+        override fun inject(value: Any?) {
             @Suppress("UNCHECKED_CAST")
             when (this.lateObj) {
                 is LateInit.Ref<*> -> (this.lateObj as LateInit.Ref<Any?>).init(value)
@@ -376,6 +413,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                 if (targets.none { it is ParameterInjectionTarget } && !ignoreConstructors)
                     klass.defaultCtr(ctx)
 
+                targets.validateInjectionTargets()
                 targets.doInjection(this.binds)
 
                 ctx.instance!!
@@ -390,7 +428,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         override val type: Type = klass
         override val name: String = klass.canonicalName
 
-        override fun injectValue(value: Any) {}
+        override fun injectValue(value: Any?) {}
     }
 
 

@@ -64,7 +64,7 @@ data class InjectionTargetField(val ctx: InjectionContext, val field: Field) :
     override val name: String
         get() = this.field.name
 
-    override fun injectValue(value: Any) {
+    override fun injectValue(value: Any?) {
         this.field.isAccessible = true
         this.field.set(ctx.instance, value)
     }
@@ -90,7 +90,7 @@ data class InjectionTargetMethod(val ctx: InjectionContext, val method: Method) 
     override val type: Type
         get() = this.method.genericParameterTypes[0]
 
-    override fun injectValue(value: Any) {
+    override fun injectValue(value: Any?) {
         this.method.invoke(ctx.instance, value)
     }
 

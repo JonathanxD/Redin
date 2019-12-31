@@ -129,7 +129,22 @@ abstract class InjectionTarget {
     /**
      * Injects the [value].
      */
-    abstract fun inject(value: Any)
+    abstract fun inject(value: Any?)
+
+    /**
+     * Validates the injection target.
+     *
+     * @throws InvalidInjectionTargetException
+     */
+    @Throws(InvalidInjectionTargetException::class)
+    open fun validateInjectionTarget() {}
+
+    /**
+     * Formats injection target into readable string.
+     */
+    open fun formatToReadable(): String =
+        "${this.qualifiersToReadableSpaced()}${this.type.toReadable()} ${this.resolveNameOrOriginal()}"
+
 }
 
 /**
@@ -137,13 +152,15 @@ abstract class InjectionTarget {
  */
 abstract class AbstractInjectionTarget : InjectionTarget() {
 
-    final override fun inject(value: Any) {
-        (this.type as? Class<*>)?.let {
-            if (!it.isInstance(value))
-                throw IllegalArgumentException("Value $value is not assignable to ${it.canonicalName}.")
-        } ?: TypeUtil.toTypeInfo(this.type)?.let {
-            if (!it.typeClass.isInstance(value))
-                throw IllegalArgumentException("Value $value is not assignable to $it.")
+    final override fun inject(value: Any?) {
+        if (value != null) {
+            (this.type as? Class<*>)?.let {
+                if (!it.isInstance(value))
+                    throw IllegalArgumentException("Value $value is not assignable to ${it.canonicalName}.")
+            } ?: TypeUtil.toTypeInfo(this.type)?.let {
+                if (!it.typeClass.isInstance(value))
+                    throw IllegalArgumentException("Value $value is not assignable to $it.")
+            }
         }
 
         this.injectValue(value)
@@ -152,7 +169,7 @@ abstract class AbstractInjectionTarget : InjectionTarget() {
     /**
      * Injects the [value].
      */
-    abstract fun injectValue(value: Any)
+    abstract fun injectValue(value: Any?)
 }
 
 /**

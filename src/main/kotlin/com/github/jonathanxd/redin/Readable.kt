@@ -28,19 +28,34 @@
 package com.github.jonathanxd.redin
 
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.jonathanxd.kores.type.`is`
 import java.lang.reflect.Type
+import javax.inject.Named
 
-open class InjectionException : RuntimeException {
-    constructor() : super()
-    constructor(message: String) : super(message)
-    constructor(cause: Throwable) : super(cause)
-    constructor(message: String, cause: Throwable) : super(message, cause)
-}
 
-open class BindingMissingException(target: InjectionTarget) :
-        InjectionException("Missing binding for ${target.toReadableExtended()}")
+fun List<AnnotationContainer>.toReadable(): String =
+        this.joinToString(separator = " ") { it.toString() }
 
-open class InvalidInjectionTargetException : InjectionException {
-    constructor(message: String, target: InjectionTarget) : super("$message. Injection Target: ${target.toReadableExtended()}")
-    constructor(message: String, target: InjectionTarget, cause: Throwable) : super("$message. Injection Target: ${target.toReadableExtended()}", cause)
-}
+fun List<AnnotationContainer>.toReadableSpaced(): String =
+        if (this.isEmpty()) ""
+        else
+            "${this.toReadable()} "
+
+fun InjectionTarget.qualifiersToReadable(): String =
+        this.qualifiers.toReadable()
+
+fun InjectionTarget.qualifiersToReadableSpaced(): String =
+        this.qualifiers.toReadableSpaced()
+
+fun Type.toReadable(): String =
+        if (this is Class<*>) this.simpleName else TypeUtil.toTypeInfo(this).toString()
+
+fun InjectionTarget.toReadableExtended(): String =
+        "${this.formatToReadable()} ($this)"
+
+fun InjectionTarget.resolveNameOrOriginal(): String =
+        this.qualifiers.find {
+            it.type.`is`(Named::class.java)
+                    && it.getOrNull("value") != null
+        }?.get("value") as? String
+                ?: this.name
