@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -48,16 +48,18 @@ inline fun Redin(ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
     val redin = RedinInjector(bindings)
     ctx(BindContext(redin, redin))
+    redin.bind()
     return redin
 }
 
 /**
  * Creates injector.
  */
-inline fun ChildRedin(parent: Injector, ctx: BindContext.() -> Unit): Injector {
+inline fun ChildRedin(parent: Injector, crossinline ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
     val redin = ChildRedinInjector(parent, bindings)
     ctx(BindContext(redin, redin))
+    redin.bind()
     return redin
 }
 
@@ -68,6 +70,7 @@ inline fun Injector.child(ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
     val redin = ChildRedinInjector(this, bindings)
     ctx(BindContext(redin, redin))
+    redin.bind()
     return redin
 }
 

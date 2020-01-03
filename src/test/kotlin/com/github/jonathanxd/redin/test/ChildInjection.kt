@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -27,10 +27,8 @@
  */
 package com.github.jonathanxd.redin.test
 
-import com.github.jonathanxd.redin.Redin
-import com.github.jonathanxd.redin.RedinInject
-import com.github.jonathanxd.redin.SINGLETON
-import com.github.jonathanxd.redin.child
+import com.github.jonathanxd.iutils.`object`.LateInit
+import com.github.jonathanxd.redin.*
 import org.junit.Assert
 import org.junit.Test
 

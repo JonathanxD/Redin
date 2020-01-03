@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -27,9 +27,11 @@
  */
 package com.github.jonathanxd.redin.test
 
+import com.github.jonathanxd.iutils.`object`.LateInit
 import com.github.jonathanxd.redin.*
 import org.junit.Assert
 import org.junit.Test
+import javax.inject.Singleton
 
 class LateInjectionOnConstructor {
 
@@ -69,6 +71,40 @@ class LateInjectionOnConstructor {
         }
 
         Assert.assertTrue(node === node.parent)
+    }
+
+    @RedinInject
+    class Node3(val value: Any,
+                @Late val parent: LateInit.Ref<Node3>)
+
+    @Test
+    fun selfPreLateInjectionTest() {
+        val injector = Redin {
+            bind<Any>() toValue "Hello"
+            val instance: Node3 = injector.get()
+            bind<Node3>() toValue instance
+        }
+
+        val node: Node3 = injector.get()
+
+        Assert.assertTrue(node !== node.parent.value)
+    }
+
+    @RedinInject
+    class Node4(val value: Any,
+                @Late @Singleton val parent: LateInit.Ref<Node4>)
+
+    @Test
+    fun selfPreLateInjectionSingletonTest() {
+        val injector = Redin {
+            bind<Any>() toValue "Hello"
+            val instance: Node4 = injector.get(scope = SINGLETON)
+            bind<Node4>() inScope SINGLETON toValue instance
+        }
+
+        val node: Node4 = injector.get(scope = SINGLETON)
+
+        Assert.assertTrue(node === node.parent.value)
     }
 
 }

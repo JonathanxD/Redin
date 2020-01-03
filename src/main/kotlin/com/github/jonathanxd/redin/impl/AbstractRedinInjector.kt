@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -33,7 +33,6 @@ import com.github.jonathanxd.iutils.string.ToStringHelper
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.jonathanxd.redin.*
-import java.lang.StringBuilder
 import java.lang.reflect.*
 import java.util.*
 import javax.inject.Inject
@@ -49,7 +48,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
     protected abstract fun addLateTarget(target: InjectionTarget)
     protected abstract fun addHotSwappableTarget(target: Injector.HotSwappable)
 
-    protected abstract fun removeLateTarget(predicate: (InjectionTarget) -> Boolean)
+    protected abstract fun removeLateTargetsThat(predicate: (InjectionTarget) -> Boolean)
 
     @Suppress("UNCHECKED_CAST")
     override fun <T : Any> get(klass: Class<T>, scope: BindScope): T {
@@ -67,10 +66,14 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         ) as T
     }
 
+    override fun bind() {
+        this.hotswap(this.binds)
+    }
+
     override fun bind(ctx: BindContext.() -> Unit) {
         ctx(BindContext(this, this))
 
-        this.hotswap(this.binds)
+        this.bind()
     }
 
     override fun getAllBinds(): List<Bind<*>> =
@@ -116,7 +119,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
     abstract override fun newInjector(keepScoped: Boolean): AbstractRedinInjector
 
     private fun hotswap(bindings: List<Bind<*>>) {
-        this.removeLateTarget { it.doInjection(bindings) }
+        this.removeLateTargetsThat { it.doInjection(bindings) }
 
         this.hotSwappableTargets.forEach { swappable ->
             swappable.target.bindings(bindings).lastOrNull()?.let {
@@ -153,7 +156,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                 if (this.lazy)
                     throw IllegalArgumentException("@Lazy and @Late cannot be used together. InjectionTarget: $this.")
 
-                if (this !in lateTargets) {
+                if (this !in this@AbstractRedinInjector.lateTargets) {
                     addLateTarget(if (typeClass.isLate() && this !is InjectionTargetLate) {
                         val late = typeClass.createLate(this.name, this.lazy)
                         this.inject(late)
@@ -196,6 +199,11 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                 addHotSwappableTarget(Injector.HotSwappable(this, box))
                 createHotSwappable(this.type.toClass(), box)
             }
+        } else if (typeClass.isLate() && this !is InjectionTargetLate) {
+            val late = typeClass.createLate(this.name, this.lazy)
+            val target = InjectionTargetLate(this, late)
+            target.inject(toInject)
+            late
         } else toInject
 
         this.inject(finalInject)

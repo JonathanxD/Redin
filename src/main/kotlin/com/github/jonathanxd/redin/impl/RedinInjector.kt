@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -86,7 +86,7 @@ class RedinInjector(override val mutableBinds: MutableList<Bind<*>>) : AbstractR
         this._hotSwappableTargets.add(target)
     }
 
-    override fun removeLateTarget(predicate: (InjectionTarget) -> Boolean) {
+    override fun removeLateTargetsThat(predicate: (InjectionTarget) -> Boolean) {
         this._lateTargets.removeIf(predicate)
     }
 

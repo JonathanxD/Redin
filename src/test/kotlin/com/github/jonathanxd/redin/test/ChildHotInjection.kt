@@ -27,19 +27,48 @@
  */
 package com.github.jonathanxd.redin.test
 
-import javax.inject.Qualifier
+import com.github.jonathanxd.iutils.`object`.LateInit
+import com.github.jonathanxd.redin.*
+import org.junit.Assert
+import org.junit.Test
 
-@Target(
-    AnnotationTarget.PROPERTY,
-    AnnotationTarget.FIELD,
-    AnnotationTarget.VALUE_PARAMETER,
-    AnnotationTarget.PROPERTY_SETTER
-)
-@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class Access(val name: String, val mode: Mode)
+class ChildHotInjection {
 
-enum class Mode {
-    RW,
-    READ_ONLY
+    object ResourceFetcher
+    object ResourcePusher
+
+    @RedinInject
+    class ResourceProvider(@Late val resourceFetcher: LateInit.Ref<ResourceFetcher>)
+
+    @RedinInject
+    class ResourceManager(@Late val resourceFetcher: LateInit.Ref<ResourceFetcher>,
+                          @Late val resourcePusher: LateInit.Ref<ResourcePusher>)
+
+    @Test
+    fun injectHot() {
+        val baseInjector = Redin {
+            bind<ResourceFetcher>() toValue ResourceFetcher
+        }
+
+        val provider: ResourceProvider = baseInjector.get()
+
+        // Inherit baseInjector binds
+        val childInjector = baseInjector.child {}
+
+        baseInjector.bind {
+            bind<ResourcePusher>() toValue ResourcePusher
+        }
+
+        val manager: ResourceManager = childInjector.get()
+
+        Assert.assertTrue(provider.resourceFetcher.isInitialized)
+        Assert.assertTrue(provider.resourceFetcher.value == ResourceFetcher)
+
+        Assert.assertTrue(manager.resourceFetcher.isInitialized)
+        Assert.assertTrue(manager.resourcePusher.isInitialized)
+        Assert.assertTrue(manager.resourceFetcher.value === ResourceFetcher)
+        Assert.assertTrue(manager.resourcePusher.value === ResourcePusher)
+
+    }
+
 }

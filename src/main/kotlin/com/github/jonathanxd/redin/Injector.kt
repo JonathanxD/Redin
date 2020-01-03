@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2019 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
@@ -88,7 +88,12 @@ interface Injector {
     fun <T : Any> injectMembers(instance: T): T = this.injectMembers(instance, BindScope.NO_SCOPE)
 
     /**
-     * Add more bindings to this injector.
+     * Update bindings.
+     */
+    fun bind()
+
+    /**
+     * Add more bindings to this injector and update bindings.
      */
     fun bind(ctx: BindContext.() -> Unit)
 
@@ -185,6 +190,11 @@ fun Injector.getRequiredBind(matcher: BindMatcher): Bind<*> =
  * Injects dependency in [T] and returns the [instance][T].
  */
 inline fun <reified T : Any> Injector.get() = this[typeInfo<T>()]
+
+/**
+ * Injects dependency in [T] and returns the [instance][T].
+ */
+inline fun <reified T : Any> Injector.get(scope: BindScope = BindScope.NO_SCOPE) = this[typeInfo<T>(), scope]
 
 /**
  * Returns a function that resolves the [Bind] and retrieves the provided [dependency][T] at each invocation.
