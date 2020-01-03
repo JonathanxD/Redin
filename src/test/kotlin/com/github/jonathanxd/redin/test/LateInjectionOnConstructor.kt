@@ -48,15 +48,16 @@ class LateInjectionOnConstructor {
             bind<Node>() toValue node
         }
 
-        Assert.assertTrue(node == node.parent)
+        Assert.assertTrue(node === node.parent)
     }
 
     @RedinInject
     class Node2(val value: Any) {
-        @Late
+        @set:Late
         lateinit var parent: Node2
     }
 
+    @Test
     fun selfInjectionTestRight() {
         val injector = Redin {
             bind<Any>() toValue "Hello"
@@ -67,7 +68,7 @@ class LateInjectionOnConstructor {
             bind<Node2>() toValue node
         }
 
-        Assert.assertTrue(node == node.parent)
+        Assert.assertTrue(node === node.parent)
     }
 
 }

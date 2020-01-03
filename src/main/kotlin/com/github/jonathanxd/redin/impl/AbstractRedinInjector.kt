@@ -159,7 +159,6 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                         this.inject(late)
                         InjectionTargetLate(this, late)
                     } else {
-                        this.inject(null)
                         this
                     })
                     return false
@@ -286,7 +285,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         }
 
         for (method in this.methods) {
-            if (method.isInjectAnnotationPresent()) {
+            if (method.isInjectAnnotationPresent() && !method.isSynthetic) {
                 if (method.parameterCount != 1)
                     throw IllegalArgumentException("Injection target '$method' must be a setter method with a single parameter!")
 
@@ -369,6 +368,9 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
     private fun AnnotatedElement.isInjectAnnotationPresent() =
             this.isAnnotationPresent(RedinInject::class.java)
                     || this.isAnnotationPresent(Inject::class.java)
+                    || this.isAnnotationPresent(HotSwappable::class.java)
+                    || this.isAnnotationPresent(Late::class.java)
+                    || this.isAnnotationPresent(LazyDep::class.java)
 
     private data class InjectionTargetLate(val target: InjectionTarget, val lateObj: LateInit) :
             InjectionTarget() {
