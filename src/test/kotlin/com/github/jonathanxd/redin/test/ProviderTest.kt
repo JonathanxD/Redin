@@ -3,7 +3,7 @@
  *
  *         The MIT License (MIT)
  *
- *      Copyright (c) 2020 JonathanxD <https://github.com/JonathanxD/Redin>
+ *      Copyright (c) 2021 JonathanxD <https://github.com/JonathanxD/Redin>
  *      Copyright (c) contributors
  *
  *
