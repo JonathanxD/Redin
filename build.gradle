@@ -17,7 +17,7 @@ plugins {
 }
 
 group 'com.github.jonathanxd'
-version '1.0.8'
+version '1.1.0'
 
 // Programming Language
 apply plugin: 'kotlin'
@@ -38,6 +38,7 @@ repositories {
 dependencies {
     // Kotlin
     implementation "org.jetbrains.kotlin:kotlin-stdlib-jdk8:$kotlin_version"
+    implementation "org.jetbrains.kotlin:kotlin-reflect:$kotlin_version"
 
     // Utilities
     implementation 'com.github.koresframework.Kores:Kores:4.0.1.base'

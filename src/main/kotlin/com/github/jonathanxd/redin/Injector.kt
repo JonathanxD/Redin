@@ -31,8 +31,8 @@ import com.github.jonathanxd.iutils.box.MutableBox
 import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
-import com.github.jonathanxd.redin.impl.AbstractRedinInjector
 import java.lang.reflect.Type
+import kotlin.reflect.KProperty
 
 /**
  * Injector of dependencies. To construct an injector uses [Redin].
@@ -182,6 +182,9 @@ interface Injector {
         })
     }
 }
+
+operator fun <T> Injector.getValue(value: T, property: KProperty<*>): T =
+    this.provide(property.returnType.toTypeInfo()) as T
 
 fun Injector.getRequiredBind(matcher: BindMatcher): Bind<*> =
     this.getBind(matcher) ?: throw IllegalStateException("Bind that matches '$matcher' not found!")

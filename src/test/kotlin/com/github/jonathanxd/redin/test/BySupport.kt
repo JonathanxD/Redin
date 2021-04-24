@@ -25,41 +25,34 @@
  *      OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
  *      THE SOFTWARE.
  */
-package com.github.jonathanxd.redin
+package com.github.jonathanxd.redin.test
 
-import com.github.jonathanxd.iutils.type.Primitive
-import com.github.jonathanxd.iutils.type.TypeInfo
-import com.github.jonathanxd.iutils.type.TypeUtil
-import java.lang.reflect.Type
-import kotlin.reflect.KType
-import kotlin.reflect.full.createType
-import kotlin.reflect.jvm.jvmErasure
+import com.github.jonathanxd.iutils.kt.typeInfo
+import com.github.jonathanxd.redin.*
+import org.junit.Test
 
-fun Type.toClass(): Class<*> = TypeUtil.toTypeInfo(this).typeClass
+class BySupport {
 
-fun Type.equalsTo(other: Type): Boolean =
-    if (this is Class<*> && other is Class<*>) Primitive.typeEquals(this, other)
-    else if (this == other) true
-    else TypeUtil.toTypeInfo(this)?.let { typeInfo ->
-        TypeUtil.toTypeInfo(other).let { otherInfo ->
-            if (typeInfo.typeParameters.size == 0 && otherInfo.typeParameters.size == 0)
-                Primitive.typeEquals(typeInfo.typeClass, otherInfo.typeClass)
-            else
-                typeInfo == otherInfo
+    @Auto
+    class Connector
+
+    @Auto
+    class Keyring @Inject constructor(val redin: Injector) {
+        val connector: Connector by Get(redin)
+
+        fun pass() {
+
         }
-    } == true
-
-fun KType.toTypeInfo(): TypeInfo<*> {
-    return if (this.arguments.isEmpty())
-        TypeInfo.of(this.jvmErasure.java)
-    else {
-        val builder = TypeInfo.builderOf(this.jvmErasure.java)
-        for (arg in this.arguments) {
-            val type: KType = arg.type ?: Object::class.createType()
-
-            builder.of(type.toTypeInfo())
-        }
-
-        builder.build()
     }
+
+    @Test
+    fun bySupport() {
+        val redin = Redin {
+
+        }
+
+        val keyring: Keyring = redin.get(typeInfo<Keyring>())
+        keyring.connector
+    }
+
 }

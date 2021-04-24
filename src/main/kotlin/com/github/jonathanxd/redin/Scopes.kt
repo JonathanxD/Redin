@@ -47,6 +47,7 @@ interface BindScope {
          */
         val NO_SCOPE = object : BindScope {
             override fun match(scope: AnnotationContainer): Boolean = false
+            override fun toString(): String = "NO_SCOPE"
         }
     }
 }

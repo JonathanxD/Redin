@@ -112,3 +112,12 @@ annotation class HotSwappable
     AnnotationTarget.FUNCTION
 )
 annotation class Provides
+
+/**
+ * Marker annotation to denote which classes are candidates for injection.
+ *
+ * This interface does not have any effects on the Redin behavior, it is only a marker annotation.
+ */
+@Retention(AnnotationRetention.SOURCE)
+@Target(AnnotationTarget.CLASS)
+annotation class Auto
