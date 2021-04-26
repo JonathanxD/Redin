@@ -74,6 +74,11 @@ data class Name(val name: String) : BindQualifier {
 fun nameContainer(name: String) = AnnotationContainer<Named>(mapOf("value" to name))
 
 /**
+ * Creates a [Named] [AnnotationContainer].
+ */
+fun nameQualifier(name: String) = AnnotationContainer<Named>(mapOf("value" to name))
+
+/**
  * Matches targets annotated with [annotations].
  */
 data class AnnotatedWith(val annotations: List<Class<out Annotation>>) : BindQualifier {

@@ -112,7 +112,7 @@ class InjectionContext {
     var instance: Any? = null
         set(value) {
             if (field != null)
-                throw IllegalStateException("Already initialized")
+                throw ContextAlreadyInjected("The context was already injected in the target class!")
             field = value
         }
 

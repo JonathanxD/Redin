@@ -59,6 +59,8 @@ class ChildRedinInjector(private val parent: Injector,
 
     override fun addBind(bind: Bind<*>) {
         this.mutableBinds.add(bind)
+        if (this.mutableScopedBindings.containsKey(bind)) // Remove cached binding
+            this.mutableScopedBindings.remove(bind)
     }
 
     override fun removeBind(bind: Bind<*>) {

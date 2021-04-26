@@ -1,6 +1,8 @@
-# Redin
+![Redin Logo](logo.png)
 
 **Injection made easy.**
+
+Redin is a dependency injection framework which aims to be simple yet powerful.
 
 Simple dependency injection framework. Redin was written on top of `KoresProxy` with some features like `Lazy` dependencies and `HotSwappable` implemented through the fast proxies of `KoresProxy`.
 
@@ -119,7 +121,7 @@ Same as for `LazyDep`, but use `Hot` type instead of `Lazy`. Also there is some 
 
 ```kotlin
 @RedinInject
-class Example(@Late val log: LoggingService) // You could also use LateInit type, like: @Late val log: LateInit.Ref<LogginSerivce>
+class Example(@Late val log: LoggingService) // You could also use LateInit type, like: @Late val log: LateInit.Ref<LoggingSerivce>
 
 fun example() {
     val injector = Redin {}

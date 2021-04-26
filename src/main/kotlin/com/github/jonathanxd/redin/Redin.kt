@@ -31,6 +31,7 @@ import com.github.jonathanxd.iutils.`object`.NonNullLazy
 import com.github.jonathanxd.iutils.kt.typeInfo
 import com.github.jonathanxd.iutils.reflection.Reflection
 import com.github.jonathanxd.iutils.type.TypeInfo
+import com.github.jonathanxd.iutils.type.TypeInfoBuilder
 import com.github.jonathanxd.iutils.type.TypeParameterProvider
 import com.github.jonathanxd.iutils.type.TypeUtil
 import com.github.jonathanxd.redin.impl.ChildRedinInjector
@@ -103,6 +104,13 @@ class BindContext(private val bindListModifier: BindListModifier, val injector: 
     @Suppress("NOTHING_TO_INLINE")
     inline infix fun <T : Any> bind(type: TypeInfo<T>): ProgressBinding<T> =
         ProgressBinding({ TypedQualifiedBindTarget(TypeUtil.toType(type), it) }, this)
+
+    /**
+     * Bind [generic type][type].
+     */
+    @Suppress("NOTHING_TO_INLINE")
+    inline infix fun <T : Any> bind(type: TypeInfoBuilder<T>): ProgressBinding<T> =
+        this.bind(type.build())
 
     /**
      * Bind [type][T].
@@ -193,6 +201,13 @@ class ProgressBinding<T : Any>(
             this.scope,
             this.ctx
         )
+    }
+
+    /**
+     * Specifies the [scope] of this bind.
+     */
+    fun inSingletonScope(): ProgressBinding<T> {
+        return this inScope SINGLETON
     }
 
     /**

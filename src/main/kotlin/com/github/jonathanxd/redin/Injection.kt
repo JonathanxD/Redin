@@ -145,6 +145,12 @@ abstract class InjectionTarget {
     open fun formatToReadable(): String =
         "${this.qualifiersToReadableSpaced()}${this.type.toReadable()} ${this.resolveNameOrOriginal()}"
 
+    /**
+     * Formats injection target into readable string.
+     */
+    open fun formatToReadableWithOriginalName(): String =
+        "${this.qualifiersToReadableSpaced()}${this.type.toReadable()} ${this.name}"
+
 }
 
 /**

@@ -28,15 +28,20 @@
 package com.github.jonathanxd.redin.impl
 
 import com.github.jonathanxd.iutils.`object`.LateInit
+import com.github.jonathanxd.iutils.annotation.Named
 import com.github.jonathanxd.iutils.box.MutableBox
 import com.github.jonathanxd.iutils.string.ToStringHelper
 import com.github.jonathanxd.iutils.type.TypeInfo
 import com.github.jonathanxd.iutils.type.TypeUtil
+import com.github.jonathanxd.kores.util.isKotlin
 import com.github.jonathanxd.redin.*
+import java.lang.InstantiationException
 import java.lang.reflect.*
 import java.util.*
 import javax.inject.Inject
 import javax.inject.Provider
+import kotlin.reflect.KParameter
+import kotlin.reflect.jvm.javaConstructor
 
 abstract class AbstractRedinInjector : Injector, BindListModifier {
 
@@ -124,9 +129,9 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         this.hotSwappableTargets.forEach { swappable ->
             swappable.target.bindings(bindings).lastOrNull()?.let {
                 if (swappable.target.lazy || swappable.target.typeClass.isLazy()) {
-                    swappable.setter(swappable.target.lazily())
+                    swappable.setter(swappable.target.lazily(it))
                 } else {
-                    swappable.setter(it.provide(swappable.target))
+                    swappable.setter(it.provider(swappable.target.descriptor))
                 }
             }
         }
@@ -158,7 +163,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
 
                 if (this !in this@AbstractRedinInjector.lateTargets) {
                     addLateTarget(if (typeClass.isLate() && this !is InjectionTargetLate) {
-                        val late = typeClass.createLate(this.name, this.lazy)
+                        val late = typeClass.createLate(this, this.lazy)
                         this.inject(late)
                         InjectionTargetLate(this, late)
                     } else {
@@ -172,7 +177,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
         if ((this.lazy || this.late) && typeClass.isProvider())
             throw IllegalArgumentException("@Lazy or @Late cannot be used in Provided dependencies.")
 
-        if ((this.lazy || this.hotSwappable) && Modifier.isFinal(this.type.toClass().modifiers)) {
+        if ((this.lazy || (this.hotSwappable && !typeClass.isHot())) && Modifier.isFinal(this.type.toClass().modifiers)) {
             throw IllegalArgumentException(
                     "@Lazy and @HotSwappable is not applicable to final types. You can either use @Lazy with" +
                             " Lazy<T> type and @HotSwappable with Hot<T> (or specialized type)."
@@ -200,7 +205,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
                 createHotSwappable(this.type.toClass(), box)
             }
         } else if (typeClass.isLate() && this !is InjectionTargetLate) {
-            val late = typeClass.createLate(this.name, this.lazy)
+            val late = typeClass.createLate(this, this.lazy)
             val target = InjectionTargetLate(this, late)
             target.inject(toInject)
             late
@@ -241,6 +246,17 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             createLazy(this.type.toClass(), lz)
     }
 
+    private fun InjectionTarget.lazily(bind: Bind<*>): Any {
+        val lz = lazy(LazyThreadSafetyMode.NONE) {
+            bind.provider(this.descriptor)
+        }
+
+        return if (typeClass.isLazy())
+            lz
+        else
+            createLazy(this.type.toClass(), lz)
+    }
+
     private fun List<InjectionTarget>.validateInjectionTargets() {
         this.forEach { target ->
             target.validateInjectionTarget()
@@ -255,8 +271,12 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
 
     private fun Class<*>.defaultCtr(ctx: InjectionContext) {
         val single = this.constructors.singleOrNull { it.parameterCount == 0 }
-                ?: throw IllegalArgumentException("At least an empty constructor is required for injection. Class: $this")
-        ctx.instance = single.newInstance()
+                ?: throw InstantiationException("At least an empty constructor is required for injection. Class: $this")
+        try {
+            ctx.instance = single.newInstance()
+        } catch (t: Throwable) {
+            throw InstantiationException("Exception occurred while trying to instantiate the class '${this.canonicalName}'", t)
+        }
     }
 
     private fun Class<*>.getInjectionTargets(
@@ -277,15 +297,27 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             if (injectOnType && this.declaredConstructors.size != 1)
                 throw IllegalArgumentException("The injection target '${this.canonicalName}' must have only one constructor.")
 
+            val kConstructors = if (this.isKotlin) {
+                this.kotlin.constructors
+            } else {
+                emptyList()
+            }
+
             for (constructor in this.declaredConstructors) {
                 if (constructor.isInjectAnnotationPresent() || injectOnType) {
+                    val kConstructor =
+                        if (kConstructors.isEmpty()) null
+                        else kConstructors.first { it.javaConstructor == constructor }
+
                     if (constructor.parameterCount == 0) {
                         ctx.instance = constructor.newInstance()
                     } else {
                         val args = arrayOfNulls<Any>(constructor.parameterCount)
+                        val parameters = kConstructor?.parameters.orEmpty()
 
                         constructor.parameters.forEachIndexed { index, parameter ->
-                            targets += ParameterInjectionTarget(args, index, parameter, constructor, index == args.size - 1, ctx)
+                            val kParameter = if (parameters.isEmpty()) null else parameters[index]
+                            targets += ParameterInjectionTarget(args, index, parameter, kParameter, constructor, index == args.size - 1, ctx)
                         }
                     }
                 }
@@ -308,6 +340,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             val args: Array<Any?>,
             val count: Int,
             val parameter: Parameter,
+            val kParameter: KParameter?,
             val constructor: Constructor<*>,
             val isLast: Boolean,
             val context: InjectionContext
@@ -317,7 +350,9 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             get() = this.parameter.parameterizedType
 
         override val name: String
-            get() = parameter.name
+            get() = this.kParameter?.name
+                ?: this.parameter.getDeclaredAnnotation(Named::class.java)?.value
+                ?: this.parameter.name
 
         override fun injectValue(value: Any?) {
             this.args[count] = value
@@ -420,7 +455,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
             ) {
                 val targets = klass.getInjectionTargets(ctx, ignoreConstructors)
 
-                if (targets.none { it is ParameterInjectionTarget } && !ignoreConstructors)
+                if (targets.none { it is ParameterInjectionTarget } && !ignoreConstructors && ctx.instance == null)
                     klass.defaultCtr(ctx)
 
                 targets.validateInjectionTargets()
@@ -436,7 +471,7 @@ abstract class AbstractRedinInjector : Injector, BindListModifier {
 
     private data class InjectionTargetType(val klass: Class<*>) : InjectionTargetAnnotated(klass) {
         override val type: Type = klass
-        override val name: String = klass.canonicalName
+        override val name: String = klass.canonicalName ?: klass.name
 
         override fun injectValue(value: Any?) {}
     }

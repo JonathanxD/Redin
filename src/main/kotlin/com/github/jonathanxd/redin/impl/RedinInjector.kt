@@ -64,6 +64,8 @@ class RedinInjector(override val mutableBinds: MutableList<Bind<*>>) : AbstractR
 
     override fun addBind(bind: Bind<*>) {
         this.mutableBinds.add(bind)
+        if (this._scopedBindings.containsKey(bind)) // Remove cached binding
+            this._scopedBindings.remove(bind)
     }
 
     override fun removeBind(bind: Bind<*>) {

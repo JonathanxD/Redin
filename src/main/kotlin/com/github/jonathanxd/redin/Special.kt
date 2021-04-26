@@ -73,8 +73,10 @@ fun TypeInfo<*>.specialType(): Type? =
     }
 
 
-fun Class<*>.createLate(name: String, lazy: Boolean) =
-    if (lazy) {
+fun Class<*>.createLate(target: InjectionTarget, lazy: Boolean): LateInit {
+    val name = "${target.qualifiersToReadableSpaced()}${target.type.typeName} ${target.name}"
+
+    return if (lazy) {
         LateInit.lateLazy<Any?>(name)
     } else when (this) {
         LateInit.Bool::class.java -> LateInit.lateBool(name)
@@ -87,6 +89,7 @@ fun Class<*>.createLate(name: String, lazy: Boolean) =
         LateInit.Double::class.java -> LateInit.lateDouble(name)
         else -> LateInit.lateRef<Any?>(name)
     }
+}
 
 @Suppress("UNCHECKED_CAST")
 fun Class<*>.createHotWithValue(value: Any?) =
