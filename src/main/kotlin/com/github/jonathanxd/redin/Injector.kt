@@ -94,6 +94,17 @@ interface Injector {
 
     /**
      * Add more bindings to this injector and update bindings.
+     *
+     * # Example
+     *
+     * ```
+     * val injector = Redin {}
+     *
+     * injector.bind {
+     *     bind<String>() inScope SINGLETON qualifiedWith Name("databaseUri") toValue("localhost:8090")
+     * }
+     * ```
+
      */
     fun bind(ctx: BindContext.() -> Unit)
 

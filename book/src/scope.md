@@ -16,4 +16,38 @@ Works the same way as `SINGLETON`, however instances are shared across the user 
 
 ### Implementing a scope
 
-**TODO**
+Every scope is linked to an annotation, so to implement your own scope, you first need to have an annotation:
+
+```kotlin
+@Retention(AnnotationRetention.RUNTIME)
+annotation class MyScope
+```
+
+Then you create an `object` to implement `BindScope`:
+
+```kotlin
+val MY_SCOPE = object : BindScope {
+    override fun match(scope: AnnotationContainer): Boolean =
+        scope.type.`is`(MyScope::class.java)
+
+    override fun toString(): String = "MY_SCOPE"
+}
+```
+
+The usage is the same as for `SINGLETON`:
+
+```kotlin
+class ScopeTest
+
+fun myScope() {
+    val injector = Redin {
+        bind<ScopeTest>() inScope MY_SCOPE toImplementation(ScopeTest::class.java)
+    }
+
+    val test = injector.provide<ScopeTest>(scope = MY_SCOPE)()
+    val test2 = injector.provide<ScopeTest>(scope = MY_SCOPE)()
+
+    println(test)
+    println(test2)
+}
+```
