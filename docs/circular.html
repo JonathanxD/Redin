@@ -167,6 +167,50 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="circular-dependency"><a class="header" href="#circular-dependency">Circular dependency</a></h1>
+<p>A circular dependency scenario occurs when, for example, a dependency X depends on a dependency Y that depends on the dependency X. </p>
+<p>This could occur directly or indirectly, for example, the code below shows an example of a direct circular dependency:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(val dependencyA: DependencyA)
+</code></pre>
+<p>and the code below shows and example of indirect circular dependency:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(val dependencyC: DependencyC)
+class DependencyC @Inject constructor(val dependencyA: DependencyA)
+</code></pre>
+<p>Redin does not have a mechanism to detect circular dependencies, because even if it is possible to do, given that Redin allows <code>Dependency Providers</code> which resolves dependencies dynamically, it will not be possible to cover all scenarios without adding extra work to users of Redin. So circular dependencies ends up in a <code>StackOverflowError</code>.</p>
+<p>If you really need to have a circular dependency, use <em>lazy dependency resolution</em>:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(@LazyDep val dependencyA: Lazy&lt;DependencyA&gt;)
+
+fun circularInject() {
+    val injector = Redin {
+        bind&lt;DependencyA&gt;().inSingletonScope().toImplementation&lt;DependencyA&gt;()
+        bind&lt;DependencyB&gt;().inSingletonScope().toImplementation&lt;DependencyB&gt;()
+    }
+
+    val dependency = injector.provide&lt;DependencyA&gt;(scope = SINGLETON)()
+
+}
+</code></pre>
+<p>However, we heavily discourage the use of circular dependencies, as it does not follow the <em>separation of concerns</em> concept.</p>
+<p>If you have a common interface, it would be interesting to use the proxied version of lazy, as it introduces <em>lazy initialization</em> without <code>Lazy</code> type indirection:</p>
+<pre><code class="language-kotlin">interface DependencyA
+interface DependencyB
+
+class DependencyAImpl @Inject constructor(val dependencyB: DependencyB) : DependencyA
+class DependencyBImpl @Inject constructor(@LazyDep val dependencyA: DependencyA) : DependencyB
+
+
+fun circularInject() {
+    val injector = Redin {
+        bind&lt;DependencyA&gt;().inSingletonScope().toImplementation&lt;DependencyAImpl&gt;()
+        bind&lt;DependencyB&gt;().inSingletonScope().toImplementation&lt;DependencyBImpl&gt;()
+    }
+
+    val dependency = injector.provide&lt;DependencyA&gt;(scope = SINGLETON)()
+
+}
+</code></pre>
 
                     </main>
 

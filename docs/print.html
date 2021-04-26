@@ -516,8 +516,130 @@ fun hotInject() {
 
 }
 </code></pre>
+<h2 id="module"><a class="header" href="#module">Module</a></h2>
+<p>Redin supports module-like bind declaration:</p>
+<pre><code class="language-kotlin">@RedinInject
+class Example(val log: LoggingService)
+class MyModule {
+    @Provides
+    @Singleton
+    fun provideLoggingService(): LoggingService = MyLoggingService()
+}
+
+fun example() {
+    val injector = Redin {
+        module(MyModule())
+    }
+    
+    val example = injector.get&lt;Example&gt;()
+}
+</code></pre>
+<h2 id="get-vs-provide"><a class="header" href="#get-vs-provide"><code>get</code> vs <code>provide</code></a></h2>
+<p>The <code>get</code> function is used to create an instance of a class injecting dependencies as needed, while <code>provide</code> is used to retrieve a dependency declared in <code>BindContext</code>:</p>
+<pre><code class="language-kotlin">class MyService @Inject constructor(val logger: Logger)
+
+class MyService2 @Inject constructor(val myService: MyService)
+
+@Test
+fun getVsProvideInject() {
+    val injector = Redin {
+        bind&lt;Logger&gt;().inSingletonScope().toValue(Logger.getGlobal())
+    }
+    
+    // Creates a new instance of MyService injecting dependencies
+    val myService = injector.get&lt;MyService&gt;()
+    // Won't work since there is no binding for ‘MyService’.
+    val myServiceProvided = injector.provide&lt;MyService&gt;(scope = SINGLETON)()
+    // Won't work since there is no binding for ‘MyService’ to inject in ‘MyService2’.
+    val myService2 = injector.get&lt;MyService2&gt;()
+
+}
+</code></pre>
+<p>The right way to write the could above is:</p>
+<pre><code class="language-kotlin">class MyService @Inject constructor(val logger: Logger)
+
+class MyService2 @Inject constructor(val myService: MyService)
+
+fun getVsProvideInject() {
+    val injector = Redin {
+        bind&lt;Logger&gt;().inSingletonScope().toValue(Logger.getGlobal())
+        bindToImplementation&lt;MyService&gt;(scope = SINGLETON)
+    }
+
+    val myService = injector.provide&lt;MyService&gt;(scope = SINGLETON)()
+    val myServiceProvided = injector.provide&lt;MyService&gt;(scope = SINGLETON)()
+    val myService2 = injector.get&lt;MyService2&gt;()
+
+}
+</code></pre>
+<h2 id="lazy-by-default"><a class="header" href="#lazy-by-default">Lazy by default</a></h2>
+<p>Redin resolves dependencies lazily by default, this means that the following code works:</p>
+<pre><code class="language-kotlin">
+class MyService @Inject constructor(val logger: Logger)
+
+fun lazyByDefaultInject() {
+    val injector = Redin {
+        bind&lt;Logger&gt;().inSingletonScope().toValue(Logger.getGlobal())
+    }
+
+    val myService = injector.provide&lt;MyService&gt;(scope = SINGLETON)
+
+    injector.bind {
+        bindToImplementation&lt;MyService&gt;(scope = SINGLETON)
+    }
+
+    myService()
+
+}
+</code></pre>
+<p>Resolution only occurs when the provider function is invoked. However, since classes does not have this indirection, they always resolve dependencies in instantiation (unless they have <code>@Late</code> or <code>@Lazy</code> dependencies).</p>
 <h1 id="qualifiers"><a class="header" href="#qualifiers">Qualifiers</a></h1>
+<p><strong>TODO</strong></p>
 <h1 id="circular-dependency"><a class="header" href="#circular-dependency">Circular dependency</a></h1>
+<p>A circular dependency scenario occurs when, for example, a dependency X depends on a dependency Y that depends on the dependency X. </p>
+<p>This could occur directly or indirectly, for example, the code below shows an example of a direct circular dependency:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(val dependencyA: DependencyA)
+</code></pre>
+<p>and the code below shows and example of indirect circular dependency:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(val dependencyC: DependencyC)
+class DependencyC @Inject constructor(val dependencyA: DependencyA)
+</code></pre>
+<p>Redin does not have a mechanism to detect circular dependencies, because even if it is possible to do, given that Redin allows <code>Dependency Providers</code> which resolves dependencies dynamically, it will not be possible to cover all scenarios without adding extra work to users of Redin. So circular dependencies ends up in a <code>StackOverflowError</code>.</p>
+<p>If you really need to have a circular dependency, use <em>lazy dependency resolution</em>:</p>
+<pre><code class="language-kotlin">class DependencyA @Inject constructor(val dependencyB: DependencyB)
+class DependencyB @Inject constructor(@LazyDep val dependencyA: Lazy&lt;DependencyA&gt;)
+
+fun circularInject() {
+    val injector = Redin {
+        bind&lt;DependencyA&gt;().inSingletonScope().toImplementation&lt;DependencyA&gt;()
+        bind&lt;DependencyB&gt;().inSingletonScope().toImplementation&lt;DependencyB&gt;()
+    }
+
+    val dependency = injector.provide&lt;DependencyA&gt;(scope = SINGLETON)()
+
+}
+</code></pre>
+<p>However, we heavily discourage the use of circular dependencies, as it does not follow the <em>separation of concerns</em> concept.</p>
+<p>If you have a common interface, it would be interesting to use the proxied version of lazy, as it introduces <em>lazy initialization</em> without <code>Lazy</code> type indirection:</p>
+<pre><code class="language-kotlin">interface DependencyA
+interface DependencyB
+
+class DependencyAImpl @Inject constructor(val dependencyB: DependencyB) : DependencyA
+class DependencyBImpl @Inject constructor(@LazyDep val dependencyA: DependencyA) : DependencyB
+
+
+fun circularInject() {
+    val injector = Redin {
+        bind&lt;DependencyA&gt;().inSingletonScope().toImplementation&lt;DependencyAImpl&gt;()
+        bind&lt;DependencyB&gt;().inSingletonScope().toImplementation&lt;DependencyBImpl&gt;()
+    }
+
+    val dependency = injector.provide&lt;DependencyA&gt;(scope = SINGLETON)()
+
+}
+</code></pre>
 <h1 id="troubleshooting"><a class="header" href="#troubleshooting">Troubleshooting</a></h1>
 <p>A section dedicated to help with common mistakes made in <code>Redin</code>, as it does not works in the same way traditional <code>DI</code> works.</p>
 

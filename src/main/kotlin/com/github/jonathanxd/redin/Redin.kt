@@ -44,6 +44,14 @@ annotation class RedinDsl
 
 /**
  * Creates injector.
+ *
+ * ## Example
+ *
+ * ```
+ * val injector = Redin {
+ *     bind<String>() inScope SINGLETON qualifiedWith Name("databaseUri") toValue("localhost:8090")
+ * }
+ * ```
  */
 inline fun Redin(ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
@@ -54,7 +62,16 @@ inline fun Redin(ctx: BindContext.() -> Unit): Injector {
 }
 
 /**
- * Creates injector.
+ * Creates a child injector.
+ *
+ * ## Example
+ *
+ * ```
+ * val injector = Redin {}
+ * val childInjector = ChildRein(injector) {
+ *     bind<String>() inScope SINGLETON qualifiedWith Name("databaseUri") toValue("localhost:8090")
+ * }
+ * ```
  */
 inline fun ChildRedin(parent: Injector, crossinline ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
@@ -65,9 +82,18 @@ inline fun ChildRedin(parent: Injector, crossinline ctx: BindContext.() -> Unit)
 }
 
 /**
- * Creates injector.
+ * Creates a child injector.
+ *
+ * ## Example
+ *
+ * ```
+ * val injector = Redin {}
+ * val childInjector = injector.child() {
+ *     bind<String>() inScope SINGLETON qualifiedWith Name("databaseUri") toValue("localhost:8090")
+ * }
+ * ```
  */
-inline fun Injector.child(ctx: BindContext.() -> Unit): Injector {
+inline fun Injector.child(crossinline ctx: BindContext.() -> Unit): Injector {
     val bindings = mutableListOf<Bind<*>>()
     val redin = ChildRedinInjector(this, bindings)
     ctx(BindContext(redin, redin))
@@ -129,6 +155,32 @@ class BindContext(private val bindListModifier: BindListModifier, val injector: 
      */
     inline fun <reified T : Any> bind(): ProgressBinding<T> =
         ProgressBinding({ TypedQualifiedBindTarget(T::class.java, it) }, this)
+
+    /**
+     * Bind [type][T] with the implementation being of the same type [T].
+     */
+    inline fun <reified T : Any> bindToImplementation(
+        scope: BindScope = BindScope.NO_SCOPE,
+        qualifiers: List<BindQualifier> = emptyList()
+    ): BindContext =
+        ProgressBinding<T>({ TypedQualifiedBindTarget(T::class.java, it) }, this)
+            .inScope(scope)
+            .qualifiedWith(qualifiers)
+            .toImplementation<T>()
+
+    /**
+     * Bind [type][T] with the implementation being of the same type [T].
+     */
+    inline fun <reified T : Any> bindReifiedToImplementation(
+        scope: BindScope = BindScope.NO_SCOPE,
+        qualifiers: List<BindQualifier> = emptyList()
+    ): BindContext =
+        ProgressBinding<T>({
+            TypedQualifiedBindTarget(
+                object : TypeParameterProvider<T>() {}.type,
+                it
+            )
+        }, this).inScope(scope).qualifiedWith(qualifiers).toImplementation<T>()
 
     /**
      * Bind [generic type][T].

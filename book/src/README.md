@@ -401,3 +401,96 @@ fun hotInject() {
 
 }
 ```
+
+## Module
+
+Redin supports module-like bind declaration:
+
+```kotlin
+@RedinInject
+class Example(val log: LoggingService)
+class MyModule {
+    @Provides
+    @Singleton
+    fun provideLoggingService(): LoggingService = MyLoggingService()
+}
+
+fun example() {
+    val injector = Redin {
+        module(MyModule())
+    }
+    
+    val example = injector.get<Example>()
+}
+```
+
+## `get` vs `provide`
+
+The `get` function is used to create an instance of a class injecting dependencies as needed, while `provide` is used to retrieve a dependency declared in `BindContext`:
+
+```kotlin
+class MyService @Inject constructor(val logger: Logger)
+
+class MyService2 @Inject constructor(val myService: MyService)
+
+@Test
+fun getVsProvideInject() {
+    val injector = Redin {
+        bind<Logger>().inSingletonScope().toValue(Logger.getGlobal())
+    }
+    
+    // Creates a new instance of MyService injecting dependencies
+    val myService = injector.get<MyService>()
+    // Won't work since there is no binding for ‘MyService’.
+    val myServiceProvided = injector.provide<MyService>(scope = SINGLETON)()
+    // Won't work since there is no binding for ‘MyService’ to inject in ‘MyService2’.
+    val myService2 = injector.get<MyService2>()
+
+}
+```
+
+The right way to write the could above is:
+
+```kotlin
+class MyService @Inject constructor(val logger: Logger)
+
+class MyService2 @Inject constructor(val myService: MyService)
+
+fun getVsProvideInject() {
+    val injector = Redin {
+        bind<Logger>().inSingletonScope().toValue(Logger.getGlobal())
+        bindToImplementation<MyService>(scope = SINGLETON)
+    }
+
+    val myService = injector.provide<MyService>(scope = SINGLETON)()
+    val myServiceProvided = injector.provide<MyService>(scope = SINGLETON)()
+    val myService2 = injector.get<MyService2>()
+
+}
+```
+
+## Lazy by default
+
+Redin resolves dependencies lazily by default, this means that the following code works:
+
+```kotlin
+
+class MyService @Inject constructor(val logger: Logger)
+
+fun lazyByDefaultInject() {
+    val injector = Redin {
+        bind<Logger>().inSingletonScope().toValue(Logger.getGlobal())
+    }
+
+    val myService = injector.provide<MyService>(scope = SINGLETON)
+
+    injector.bind {
+        bindToImplementation<MyService>(scope = SINGLETON)
+    }
+
+    myService()
+
+}
+```
+
+Resolution only occurs when the provider function is invoked. However, since classes does not have this indirection, they always resolve dependencies in instantiation (unless they have `@Late` or `@Lazy` dependencies).

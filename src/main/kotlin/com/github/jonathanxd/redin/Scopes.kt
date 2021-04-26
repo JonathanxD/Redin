@@ -75,6 +75,7 @@ val SINGLETON = object : BindScope {
     override fun match(scope: AnnotationContainer): Boolean =
         scope.type.`is`(Singleton::class.java)
 
+    override fun toString(): String = "SINGLETON"
 }
 
 /**

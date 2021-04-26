@@ -33,8 +33,12 @@ import com.github.jonathanxd.koresproxy.KoresProxy
 import com.github.jonathanxd.koresproxy.gen.direct.LazyInstance
 import com.github.jonathanxd.koresproxy.gen.direct.MutableInstance
 import com.github.jonathanxd.koresproxy.handler.InvocationHandler
+import com.github.jonathanxd.redin.UnsupportedTypeException
 
 fun createLazy(type: Class<*>, lazy: kotlin.Lazy<Any>): Any {
+    if (!type.isInterface)
+        throw UnsupportedTypeException("Tried to create a proxy to ${type.name}, however Redin does not yet support generating Lazy Proxies for classes. Use an interface instead.")
+
     return KoresProxy.newProxyInstance<Any>(arrayOf(), arrayOf()) {
         it.classLoader(type.classLoader)
             .let {
@@ -49,6 +53,9 @@ fun createLazy(type: Class<*>, lazy: kotlin.Lazy<Any>): Any {
 }
 
 fun createHotSwappable(type: Class<*>, box: IMutableBox<*>): Any {
+    if (!type.isInterface)
+        throw UnsupportedTypeException("Tried to create a proxy to ${type.name}, however Redin does not yet support generating Lazy Proxies for classes. Use an interface instead.")
+
     return KoresProxy.newProxyInstance<Any>(arrayOf(), arrayOf()) {
         it.classLoader(type.classLoader)
             .let {
