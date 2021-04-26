@@ -100,7 +100,7 @@
 
         <nav id="sidebar" class="sidebar" aria-label="Table of contents">
             <div class="sidebar-scrollbox">
-                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="qualifiers.html"><strong aria-hidden="true">1.1.</strong> Qualifiers</a></li><li class="chapter-item expanded "><a href="circular.html"><strong aria-hidden="true">1.2.</strong> Circular Dependency</a></li><li class="chapter-item expanded "><a href="scope.html"><strong aria-hidden="true">1.3.</strong> Scopes</a></li><li class="chapter-item expanded "><a href="qualifiers.html"><strong aria-hidden="true">1.4.</strong> Qualifiers</a></li><li class="chapter-item expanded "><a href="kotlin_delegate.html"><strong aria-hidden="true">1.5.</strong> Using Kotlin Delegate</a></li></ol></li><li class="chapter-item expanded "><a href="troubleshooting.html"><strong aria-hidden="true">2.</strong> Troubleshooting</a></li></ol>
+                <ol class="chapter"><li class="chapter-item expanded "><a href="index.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="circular.html"><strong aria-hidden="true">1.1.</strong> Circular Dependency</a></li><li class="chapter-item expanded "><a href="scope.html"><strong aria-hidden="true">1.2.</strong> Scopes</a></li><li class="chapter-item expanded "><a href="qualifiers.html"><strong aria-hidden="true">1.3.</strong> Qualifiers</a></li><li class="chapter-item expanded "><a href="kotlin_delegate.html"><strong aria-hidden="true">1.4.</strong> Using Kotlin Delegate</a></li></ol></li><li class="chapter-item expanded "><a href="troubleshooting.html"><strong aria-hidden="true">2.</strong> Troubleshooting</a></li></ol>
             </div>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle"></div>
         </nav>
@@ -593,54 +593,6 @@ fun lazyByDefaultInject() {
 }
 </code></pre>
 <p>Resolution only occurs when the provider function is invoked. However, since classes does not have this indirection, they always resolve dependencies in instantiation (unless they have <code>@Late</code> or <code>@Lazy</code> dependencies).</p>
-<h1 id="qualifiers"><a class="header" href="#qualifiers">Qualifiers</a></h1>
-<p>Qualifiers are used to identify between different dependencies of the same type. The most common qualifier is the <code>Named</code> qualifier:</p>
-<pre><code class="language-kotlin">val injector = Redin {
-    bind&lt;String&gt;() inScope SINGLETON qualifiedWith Name(&quot;databaseUri&quot;) toValue &quot;localhost:8090&quot;
-}
-</code></pre>
-<p>To query dependencies by qualifier, we need to use <code>AnnotationContainer</code>, however we heavily recommend providing wrappers around <code>AnnotationContainer</code> for the ease of use, just like we do for <code>Named</code> annotations:</p>
-<pre><code class="language-kotlin">val injector = Redin {
-    bind&lt;String&gt;() inScope SINGLETON qualifiedWith Name(&quot;databaseUri&quot;) toValue &quot;localhost:8090&quot;
-}
-
-val uri = injector.provide&lt;String&gt;(scope = SINGLETON, qualifiers = listOf(nameQualifier(&quot;databaseUri&quot;)))()
-</code></pre>
-<h2 id="implementing-your-own-qualifiers"><a class="header" href="#implementing-your-own-qualifiers">Implementing your own qualifiers</a></h2>
-<p>Just like implementing a <a href="scope.html">BindScope</a>, you need an annotation class (it must be annotated with <code>@Qualifier</code> to be detected as a qualifier):</p>
-<pre><code class="language-kotlin">@Retention(AnnotationRetention.RUNTIME)
-@Qualifier
-annotation class MyQualifier(val name: String)
-</code></pre>
-<p>A wrapper around <code>AnnotationContainer</code> for the ease of use:</p>
-<pre><code class="language-kotlin">fun myQualifier(name: String) =
-    AnnotationContainer&lt;MyQualifier&gt;(mapOf(&quot;name&quot; to name))
-</code></pre>
-<p>Then the matcher:</p>
-<pre><code class="language-kotlin">data class MyBindQualifier(val name: String) : BindQualifier {
-    override fun matches(annotationContainer: AnnotationContainer): Boolean =
-        annotationContainer.type.`is`(MyQualifier::class.java)
-                &amp;&amp; annotationContainer[&quot;name&quot;] == name
-
-}
-</code></pre>
-<h3 id="using-the-qualifier"><a class="header" href="#using-the-qualifier">Using the qualifier</a></h3>
-<p>Use it just like any other qualifier:</p>
-<pre><code class="language-kotlin">class ToInject
-class QualifierTest @Inject constructor(@MyQualifier(&quot;test&quot;) val inject: ToInject)
-
-fun myQualifier() {
-    val injector = Redin {
-        bind&lt;ToInject&gt;() inScope SINGLETON qualifiedWith MyBindQualifier(&quot;test&quot;) toValue ToInject()
-        bindToImplementation&lt;QualifierTest&gt;(scope = SINGLETON)
-    }
-
-    val qualifierTest = injector.provide&lt;QualifierTest&gt;(scope = SINGLETON)()
-}
-</code></pre>
-<p>For querying using <code>provide</code>:</p>
-<pre><code class="language-kotlin">val toInject = injector.provide&lt;ToInject&gt;(scope = SINGLETON, qualifiers = listOf(myQualifier(&quot;test&quot;)))()
-</code></pre>
 <h1 id="circular-dependency"><a class="header" href="#circular-dependency">Circular dependency</a></h1>
 <p>A circular dependency scenario occurs when, for example, a dependency X depends on a dependency Y that depends on the dependency X. </p>
 <p>This could occur directly or indirectly, for example, the code below shows an example of a direct circular dependency:</p>
@@ -722,7 +674,7 @@ fun myScope() {
     println(test2)
 }
 </code></pre>
-<h1 id="qualifiers-1"><a class="header" href="#qualifiers-1">Qualifiers</a></h1>
+<h1 id="qualifiers"><a class="header" href="#qualifiers">Qualifiers</a></h1>
 <p>Qualifiers are used to identify between different dependencies of the same type. The most common qualifier is the <code>Named</code> qualifier:</p>
 <pre><code class="language-kotlin">val injector = Redin {
     bind&lt;String&gt;() inScope SINGLETON qualifiedWith Name(&quot;databaseUri&quot;) toValue &quot;localhost:8090&quot;
@@ -735,7 +687,7 @@ fun myScope() {
 
 val uri = injector.provide&lt;String&gt;(scope = SINGLETON, qualifiers = listOf(nameQualifier(&quot;databaseUri&quot;)))()
 </code></pre>
-<h2 id="implementing-your-own-qualifiers-1"><a class="header" href="#implementing-your-own-qualifiers-1">Implementing your own qualifiers</a></h2>
+<h2 id="implementing-your-own-qualifiers"><a class="header" href="#implementing-your-own-qualifiers">Implementing your own qualifiers</a></h2>
 <p>Just like implementing a <a href="scope.html">BindScope</a>, you need an annotation class (it must be annotated with <code>@Qualifier</code> to be detected as a qualifier):</p>
 <pre><code class="language-kotlin">@Retention(AnnotationRetention.RUNTIME)
 @Qualifier
@@ -753,7 +705,7 @@ annotation class MyQualifier(val name: String)
 
 }
 </code></pre>
-<h3 id="using-the-qualifier-1"><a class="header" href="#using-the-qualifier-1">Using the qualifier</a></h3>
+<h3 id="using-the-qualifier"><a class="header" href="#using-the-qualifier">Using the qualifier</a></h3>
 <p>Use it just like any other qualifier:</p>
 <pre><code class="language-kotlin">class ToInject
 class QualifierTest @Inject constructor(@MyQualifier(&quot;test&quot;) val inject: ToInject)
